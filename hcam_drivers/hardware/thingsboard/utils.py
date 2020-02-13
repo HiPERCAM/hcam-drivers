@@ -68,13 +68,19 @@ def fake_data():
         'heatsink': 15,
         'injection.angle': 45,
         'pickoff.angle': -45,
-        'position': 1000
+        'position': 1000,
+        'slide.position': 1000
     }
     try:
         while True:
             for dev in DEVICE_ACCESS_TOKENS.keys():
                 props = ALLOWED_PROPERTIES[dev]
-                data = {prop: means[prop] * (1+np.random.normal(scale=0.05)) for prop in props}
+                data = {prop: means[prop] * (1+np.random.normal(scale=0.01)) for prop in props}
+                if dev.startswith('ccd'):
+                    ccd_num = int(dev[3])
+                    print(ccd_num)
+                    data['temperature'] += ccd_num % 3
+                    data['pressure'] = 3.0e-5 * ccd_num
                 if 'peltier.status' in data:
                     data['peltier.status'] = 'OK'
                 if dev == 'chiller' or dev == 'rack':
@@ -90,11 +96,11 @@ if __name__ == "__main__":
     try:
         while True:
             dev, data = next(it)
-            print(f'Uploading data to {dev}')
+            print(f'Uploading data to {dev}: {data}')
             try:
                 upload_telemetry(dev, data)
             except Exception as err:
                 print(f'failed: {err}')
-            time.sleep(.1)
+            time.sleep(1)
     except KeyboardInterrupt:
         pass
