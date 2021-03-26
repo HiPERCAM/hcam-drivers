@@ -3,12 +3,13 @@
 # usage info
 function show_help {
 cat <<EOF
-Usage: ${0##*/} [-h] [-g] [-w]
+Usage: ${0##*/} [-h] [-g] [-w] [-e]
 Start the hipercam software.
 
     -h    display this help and exit
     -g    start eso engineering GUI (for debugging)
     -w    run on WHT (no offset script)
+    -e    use emulated hardware
 EOF
 }
 
@@ -25,7 +26,8 @@ function test {
 gui=0
 OPTIND=1
 offset=1
-while getopts hgw opt; do
+emulate=""
+while getopts hgwe opt; do
     case $opt in
         h)
             show_help
@@ -34,6 +36,8 @@ while getopts hgw opt; do
         g)  gui=1
             ;;
         w)  offset=0
+            ;;
+        e)  emulate="-e"
             ;;
         *)
             show_help >&2
@@ -44,17 +48,6 @@ done
 shift "$((OPTIND-1))"
 
 
-# make sure server is shutdown
-do_wamp_call hipercam.ngc.rpc.ngc_server.exit
-
-# move server into offline state (starting NGC software in process)
-sleep 2
-do_wamp_call hipercam.ngc.rpc.ngc_server.offline
-sleep 1
-
-# load default setup and switch to standby mode
-do_wamp_call hipercam.ngc.rpc.ngc_server.standby
-
 # standard xterm for various WAMP components to run
 XTERM="xterm -bg white -fg black -aw -vb -sb -sl 5000 -rightbar -geometry 80x16 -fa 'Monospace' -fs 8"
 
@@ -63,7 +56,7 @@ HS=`ps ax | grep hserver | wc -l`
 if [ $HS -le 1 ]
 then
     echo "starting HServer"
-    $XTERM -title "HServer" -e "hserver" &
+    $XTERM -title "HServer" -e "hserver ${emulate}" &
 else
     echo "HServer already running ($HS)"
 fi
@@ -86,18 +79,18 @@ then
     if [ $OF -le 1 ]
     then
         echo "starting GTC server"
-        $XTERM -title "GTCserver" -e "gtcserver /insroot/${username}/SYSTEM/DETDATA/" &
+        $XTERM -title "GTCserver" -e "gtcserver ${emulate} /insroot/${username}/SYSTEM/DETDATA/" &
     else
         echo "GTC server already running ($OF)"
     fi
 fi
 
 # launch WAMP components to talk to all hardware
-HWS = `ps ax | grep hwserver | wc -l`
-if [$HWS -le 1]
+HWS=`ps ax | grep hwserver | wc -l`
+if [ $HWS -le 1 ]
 then
     echo "starting Hardware Server"
-    $XTERM -title "HWserver" -e "hwserver"
+    $XTERM -title "HWserver" -e "hwserver ${emulate}"
 else
     echo "Hardware server already running"
 fi
@@ -111,3 +104,13 @@ then
 else
     echo "GUI already running ($HD)"
 fi
+
+sleep 2
+
+# move server into offline state (starting NGC software in process)
+sleep 2
+do_wamp_call hipercam.ngc.rpc.ngc_server.offline
+sleep 1
+
+# load default setup and switch to standby mode
+do_wamp_call hipercam.ngc.rpc.ngc_server.standby
