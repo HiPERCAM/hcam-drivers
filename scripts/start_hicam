@@ -90,7 +90,7 @@ HWS=`ps ax | grep hwserver | wc -l`
 if [ $HWS -le 1 ]
 then
     echo "starting Hardware Server"
-    $XTERM -title "HWserver" -e "hwserver ${emulate}"
+    $XTERM -title "HWserver" -e "hwserver ${emulate}" &
 else
     echo "Hardware server already running"
 fi
