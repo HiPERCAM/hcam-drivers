@@ -233,12 +233,11 @@ class GUI(tk.Tk):
         check_user_dir(self.globals)
 
         # rtplot server?
+        self.server = None
         if self.globals.cpars['rtplot_server_on']:
             t = FifoThread('Rtplot', self.startRtplotServer, self.globals.FIFO)
             t.daemon = True
             t.start()
-        else:
-            self.server = None
 
         # File logging
         if self.globals.cpars['file_logging_on']:
