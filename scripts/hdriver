@@ -273,8 +273,14 @@ class GUI(tk.Tk):
             print('OK - I will not quit')
         else:
             bring_offline = True
-            online = yield isOnline(self.globals)
-            powered_on = yield isPoweredOn(self.globals)
+            try:
+                online = yield isOnline(self.globals)
+                powered_on = yield isPoweredOn(self.globals)
+            except:
+                # failure to find status probably means the server is
+                # down, so there's no point trying to power off
+                online = False
+                powered_on = False
 
             # explicity check online, since cpars is false on start
             if (online and powered_on and
@@ -287,7 +293,10 @@ class GUI(tk.Tk):
 
             if bring_offline:
                 # attempt to power off server
-                result = yield execCommand(self.globals, 'ngc_server.offline')
+                try:
+                    result = yield execCommand(self.globals, 'ngc_server.offline')
+                except:
+                    result = False
                 if result:
                     self.globals.clog.info('ESO server idle and child processes quit')
                 else:
