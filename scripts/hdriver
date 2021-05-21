@@ -298,9 +298,6 @@ class GUI(tk.Tk):
                 else:
                     self.globals.clog.warn('Power off failed')
 
-            if self.server is not None:
-                self.server.shutdown()
-
             try:
                 self.after_cancel(self._after_id)
                 self.after_cancel(self.globals.astro.after_id)
