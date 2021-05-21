@@ -24,7 +24,7 @@ from hcam_widgets.hardware.ccds import CCDTempFrame
 from hcam_widgets.hardware import CCDInfoWidget
 from hcam_widgets.compo.widgets import COMPOControlWidget
 
-from hcam_drivers.utils.rtplot import RtplotServer
+from hcam_drivers.utils.rtplot import RtplotFactory
 from hcam_drivers.config import (load_config, write_config,
                                  check_user_dir, dump_app)
 
@@ -349,12 +349,10 @@ class GUI(tk.Tk):
             self.globals.clog.debug(tback)
 
         if self.server is None and self.globals.cpars['rtplot_server_on']:
-            t = FifoThread('Rtplot', self.startRtplotServer, self.globals.FIFO)
-            t.daemon = True
-            t.start()
+            self.startRtplotServer()
         elif self.server is not None and not self.globals.cpars['rtplot_server_on']:
             print('shutting down rtplot server')
-            self.server.shutdown()
+            self.server.stopListening()
             self.server = None
 
         # schedule next check
@@ -366,9 +364,9 @@ class GUI(tk.Tk):
         It is at this point that we pass the window parameters
         to the server.
         """
-        self.server = RtplotServer(self.globals.ipars,
-                                   self.globals.cpars['rtplot_server_port'])
-        self.server.run(self.globals)
+        factory = RtplotFactory(self.globals.ipars, self.globals)
+        self.server = reactor.listenTCP(self.globals.cpars['rtplot_server_port'],
+                                        factory)
 
 
 class WampComponent(ApplicationSession):
