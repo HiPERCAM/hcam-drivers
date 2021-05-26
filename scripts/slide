@@ -1,179 +1,80 @@
 #!/usr/bin/env python
-from __future__ import print_function, division, unicode_literals
-import tqdm
+from __future__ import division, print_function, unicode_literals
 
-from six.moves import queue
-from hcam_widgets.misc import FifoThread
-from hcam_widgets.globals import Container
+import six
+from autobahn.twisted.component import Component, run
+from autobahn.twisted.wamp import ApplicationSession
 from hcam_drivers.config import load_config
-from hcam_drivers.hardware import slide
+from hcam_widgets.globals import Container
+from hcam_widgets.hardware.slide import SlideFrame
+from hcam_widgets.tkutils import addStyle
+from twisted.internet import reactor, tksupport
+from twisted.internet.defer import inlineCallbacks
+from twisted.logger import Logger
+
+if not six.PY3:
+    import Tkinter as tk
+else:
+    import tkinter as tk
 
 
-usage = """
-'slide' controls the focal plane slide; it takes a single argument,
-with the following possible forms:
+class GUI(tk.Tk):
+    def __init__(self):
+        tk.Tk.__init__(self)
 
-    home         -- return the slide to its home position
-    park         -- move the focal plane just out of the field
-    position     -- return the current slide position
-    reset        -- equivalent to powering off and then on
-    stop         -- stop the device during a move
-    enable       -- enable potentiometer on back of slide
-    disable      -- disable potentiometer on back of slide
-    +<off>mm     -- add 'off' millimetres to current position
-    +<off>ms     -- add 'off' microsteps to current position
-    +<off>px     -- add 'off' pixels to current position
-    -<off>mm     -- subtract 'off' millimetres from current position
-    -<off>ms     -- subtract 'off' microsteps from current position
-    -<off>px     -- subtract 'off' pixels from current position
-    pos=<pos>mm  -- go to absolute position of 'pos' millimetres
-    pos=<pos>ms  -- go to absolute position of 'pos' microsteps
-    pos=<pos>px  -- go to absolute position of 'pos' pixels
+        # add a container object
+        self.globals = Container(telescope_names=['GTC', 'WHT'])
+        # load config
+        self.globals.cpars = dict()
+        load_config(self.globals)
 
-    Hitting <Ctrl-C> will terminate a move that has already started.
-"""
+        # initialise WAMP session
+        self.globals.session = None
+        self.globals.clog = Logger()
 
-MIN_TIMEOUT = 2  # seconds
+        # enable all buttons
+        self.globals.cpars['expert_level'] = 1
 
+        # style
+        addStyle(self)
+        # configure
+        self.title('slide gui')
+        self.protocol("WM_DELETE_WINDOW", self.ask_quit)
+        self.createcommand("::tk::mac::Quit", self.ask_quit)
 
-def action(command, estimated_time, args=()):
-    """
-    Run a long running slide command, stopping on <Ctrl-C>
-    """
-    errq = queue.Queue()
-    tstep = 0.1
-    pbar = tqdm.tqdm(total=int(estimated_time/tstep),
-                     ncols=40, leave=False,
-                     bar_format='{l_bar}{bar} | {remaining}')
-    t = FifoThread('Slide', command, errq, args=args)
-    t.start()
-    try:
-        while t.is_alive():
-            pbar.update(1)
-            t.join(timeout=tstep)
+        # add and pack slide frame
+        self.sf = SlideFrame(self)
+        self.sf.pack()
 
-    except KeyboardInterrupt:
-        raise  # re-raise so calling thread can stop slide
+    @inlineCallbacks
+    def ask_quit(self):
+        reactor.stop()
+        tksupport.uninstall()
 
-    # handle exceptions raised in thread
-    try:
-        exc = errq.get(block=False)
-    except queue.Empty:
-        pass
-    else:
-        name, error, tback = exc
-        print('\n\nError in slide thread: {}'.format(error))
-        print(tback)
+    @inlineCallbacks
+    def on_wamp_session(self, session):
+        """
+        called when joining a WAMP session
+        """
+        self.globals.clog.info('joined WAMP session')
+        self.globals.session = session
+
+        # subscribe to slide telemetry
+        yield session.subscribe(self.sf.on_telemetry,
+                                "hipercam.slide.telemetry")
 
 
-def parse_move(move_str):
-    return int(move_str[:-2]), move_str[-2:]
-
-
-def parse_position(pos_str):
-    return parse_move(pos_str.split('=')[1])
+class WampComponent(ApplicationSession):
+    def onJoin(self, details):
+        gui = self.config.extra['gui']
+        gui.on_wamp_session(self)
 
 
 if __name__ == "__main__":
-
-    # read defaults from hdriver config file
-    g = Container()
-    g.cpars = dict()
-    load_config(g)
-    cpars = g.cpars
-
-    ip, port = cpars['termserver_ip'], cpars['slide_port']
-    sl = slide.Slide(None, ip, port)
-
-    import sys
-    try:
-        comm = sys.argv[1]
-    except IndexError:
-        print(usage)
-        sys.exit(-1)
-
-    timeout = MIN_TIMEOUT
-
-    if comm == 'home':
-        timeout, msg = sl.time_home()
-
-        def command():
-            value, msg = sl.home(timeout)
-            print('\n\n'+msg)
-
-    elif comm == 'park':
-        timeout, msg = sl.time_absolute(slide.UNBLOCK_POS, 'px')
-
-        def command():
-            value, msg = sl.move_absolute(slide.UNBLOCK_POS, 'px', timeout)
-            print('\n\n'+msg)
-
-    elif comm == 'position':
-        def command():
-            print('\n\n'+sl.report_position())
-
-    elif comm == 'reset':
-        def command():
-            bytearr, msg = sl.reset()
-            print('\n\n'+msg)
-
-    elif comm == 'stop':
-        def command():
-            val, msg = sl.stop()
-            print('\n\n'+msg)
-
-    elif comm == 'enable':
-        def command():
-            bytearr, msg = sl.enable()
-            print('\n\n'+msg)
-
-    elif comm == 'disable':
-        def command():
-            bytearr, msg = sl.disable()
-            print('\n\n'+msg)
-
-    elif comm.startswith('+'):
-        try:
-            offset, unit = parse_move(comm[1:])
-        except ValueError:
-            raise ValueError('offset {} not understood'.format(comm))
-        nstep = sl._convert_to_microstep(offset, unit)
-        timeout, msg = sl.compute_timeout(nstep)
-
-        def command():
-            _, msg = sl.move_relative(offset, unit, timeout)
-            print('\n\n'+msg)
-
-    elif comm.startswith('-'):
-        try:
-            offset, unit = parse_move(comm[1:])
-        except ValueError:
-            raise ValueError('offset {} not understood'.format(comm))
-        nstep = sl._convert_to_microstep(offset, unit)
-        timeout, msg = sl.compute_timeout(nstep)
-
-        def command():
-            _, msg = sl.move_relative(-offset, unit, timeout)
-            print('\n\n'+msg)
-
-    elif comm.startswith('pos='):
-        try:
-            position, unit = parse_position(comm[1:])
-        except ValueError:
-            raise ValueError('position {} not understood'.format(comm))
-        timeout = sl.time_absolute(position, unit)
-
-        def command():
-            _, msg = sl.move_absolute(position, unit, timeout)
-            print('\n\n'+msg)
-
-    else:
-        print('Command not recognised!')
-        print(usage)
-
-    try:
-        action(command, timeout)
-    except KeyboardInterrupt:
-        # handle keyboardinterrupt
-        _, msg = sl.stop()
-        print('\n\n'+msg)
+    # The main window.
+    gui = GUI()
+    tksupport.install(gui)
+    component = Component(transports='ws://192.168.1.2:8080/ws',
+                          realm='realm1', session_factory=WampComponent,
+                          extra={'gui': gui})
+    run([component], log_level=None)
