@@ -15,9 +15,11 @@ components. The third-party requirements are:
 
 - `astropy <http://astropy.org/>`_, a package for astronomical calculations;
 
-- `pyserial <http://pyserial.sourceforge.net/>`_ for talking to serial ports;
+- `twisted <https://twistedmatrix.com/trac/>`_, a package for asynchronous programming;
 
-- `tornado <http://www.tornadoweb.org/en/stable/>`_, used for the various servers which allow communicationbetween the GUI and the instrument
+- `autobahn <https://autobahn.readthedocs.io/en/latest/>`_, a package to use the Web Application Messaging Protocol (WAMP);  
+
+- `tornado <http://www.tornadoweb.org/en/stable/>`_, used for file server which allows remote access to observing data;
 
 - `pyaml <https://pypi.python.org/pypi/pyaml/>`_ and `configobj <http://configobj.readthedocs.io/en/latest/configobj.html/>`_ for loading config files and
 
