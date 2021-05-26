@@ -1,0 +1,8 @@
+astropy
+autobahn
+tornado
+pyaml
+twisted
+configobj
+tdqm
+hcam_widgets>=1.0.0
