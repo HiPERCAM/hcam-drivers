@@ -14,9 +14,10 @@ with open('HISTORY.rst') as history_file:
 
 requirements = [
     'astropy',
-    'pyserial',
+    'autobahn',
     'tornado',
     'pyaml',
+    'twisted',
     'configobj',
     'tqdm',
     'hcam_widgets'
