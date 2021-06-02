@@ -7,14 +7,25 @@ from __future__ import print_function, absolute_import, unicode_literals, divisi
 import sys
 
 from hcam_devices.wamp.utils import call
+from hcam_devices.gtc.headers import create_header_from_telpars
 from hcam_drivers.utils.gtc import calculate_sky_offset
+
+
+def get_input():
+    response = input('> Enter desired x and y offset ')
+    try:
+        xoff, yoff = response.split(',')
+    except ValueError:
+        xoff, yoff = response.split()
+    return float(xoff), float(yoff)
 
 
 if __name__ == "__main__":
 
     carry_on = True
     try:
-        hdr = call('hipercam.gtc.rpc.get_telescope_pars')
+        pars = call('hipercam.gtc.rpc.get_telescope_pars')
+        hdr = create_header_from_telpars(pars)
     except Exception as err:
         print('failed to get telescope params from GTC server: ' + str(err))
         sys.exit(-1)
@@ -23,8 +34,7 @@ if __name__ == "__main__":
     msg += '(+ve offset moves stars right and up)'
     while carry_on:
         try:
-            xoff, yoff = input('> Enter desired x and y offset ')
-            xoff, yoff = float(xoff), float(yoff)
+            xoff, yoff = get_input()
             sky_pa = float(hdr['INSTRPA'])
             raoff, decoff = calculate_sky_offset(xoff, yoff, sky_pa)
 
