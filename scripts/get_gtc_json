@@ -6,11 +6,20 @@ import os
 from six.moves.urllib.request import urlretrieve
 import json
 
-URL_TEMPLATE = 'http://gtc-phase2.gtc.iac.es/science/Parser/sequences/GTC{id:02d}-{semester:s}_{obid:04d}.json'
-FNAME_TEMPLATE = 'GTC{id:02d}-{semester:s}_{obid:04d}.json'
+URL_TEMPLATE = 'http://gtc-phase2.gtc.iac.es/science/Parser/sequences/GTC{id:s}-{semester:s}_{obid:04d}.json'
+FNAME_TEMPLATE = 'GTC{id:s}-{semester:s}_{obid:04d}.json'
 
 
 def download_json(proposal_id, semester, obid):
+    # convert proposal ID to properly formatted string if its a number
+    try:
+        int(proposal_id)
+    except:
+        # force to be a string
+        proposal_id = str(proposal_id)
+    else:
+        proposal_id = '{:02d}'.format(proposal_id)
+
     pars = dict(id=proposal_id, semester=semester, obid=obid)
     dirname = os.path.join(os.path.expanduser('~/.hdriver'), 'apps')
     fname = os.path.join(dirname, FNAME_TEMPLATE.format(**pars))
