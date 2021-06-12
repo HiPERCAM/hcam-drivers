@@ -35,6 +35,8 @@ if __name__ == "__main__":
     while carry_on:
         try:
             xoff, yoff = get_input()
+            pars = call('hipercam.gtc.rpc.get_telescope_pars')
+            hdr = create_header_from_telpars(pars)            
             sky_pa = float(hdr['INSTRPA'])
             raoff, decoff = calculate_sky_offset(xoff, yoff, sky_pa)
 
