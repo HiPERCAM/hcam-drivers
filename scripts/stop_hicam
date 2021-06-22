@@ -1,3 +1,68 @@
-#!/bin/bash
+#! /usr/bin/env python
+#
+# This is open-source software licensed under a BSD license.
+# Please see the file LICENSE.txt for details.
+#
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
-do_wamp_call hipercam.ngc.rpc.ngc_server.exit
+import sys
+
+import psutil
+from hcam_devices.wamp.utils import call
+
+KNOWN_SCRIPTS = ['hwserver', 'hserver', 'gtcserver', 'hdriver', 'fileserver']
+EXTERNAL_PROGRAMS = ['eso']
+
+
+def on_terminate(proc):
+    print("process {} terminated with exit code {}".format(proc, proc.returncode))
+
+
+def check_script(proc, name):
+    # easy case - process name match
+    if proc.name().find(name) > 0:
+        return True
+    # tougher case - check cmdline
+    try:
+        for thing in proc.cmdline():
+            if thing.find(name) > 0:
+                return True
+    except psutil.AccessDenied:
+        pass
+    return False
+
+
+def kill_script(name):
+
+    # find all relevant processes
+    procs = [proc for proc in psutil.process_iter() if check_script(proc, name)]
+    # send SIGTERM to all processes
+    for p in procs:
+        p.terminate()
+    # Monitor for death. Send SIGKILL to zombie processes
+    gone, alive = psutil.wait_procs(procs, timeout=3, callback=on_terminate)
+    for p in alive:
+        p.kill()
+
+
+def shutdown_eso_software():
+    try:
+        call('hipercam.ngc.rpc.ngc_server.exit')
+    except Exception as err:
+        print('could not shut down eso software - ' + repr(err))
+
+
+if __name__ == "__main__":
+    programs = sys.argv[1:]
+    if len(programs) == 0:
+        # default call, shutdown ESO s/w
+        shutdown_eso_software()
+    else:
+        for program in programs:
+            if program not in KNOWN_SCRIPTS and program != 'eso':
+                raise ValueError(f'unknown script {program}: must be one of ' + ','.join(KNOWN_SCRIPTS))
+            if program == 'eso':
+                shutdown_eso_software()
+            else:
+                kill_script(program)
