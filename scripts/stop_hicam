@@ -56,7 +56,9 @@ def shutdown_eso_software():
 if __name__ == "__main__":
     programs = sys.argv[1:]
     if len(programs) == 0:
-        # default call, shutdown ESO s/w
+        # default call, shutdown ESO s/w and everything EXCEPT hwserver
+        for script in ['hserver', 'gtcserver', 'hdriver', 'fileserver']:
+            kill_script(script)
         shutdown_eso_software()
     else:
         for program in programs:
