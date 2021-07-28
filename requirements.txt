@@ -5,4 +5,5 @@ pyaml
 twisted
 configobj
 tdqm
-hcam_widgets>=1.0.0
+hcam_widgets>=1.0.2
+hcam_devices>=0.2.4
