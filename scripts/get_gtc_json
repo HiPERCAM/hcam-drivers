@@ -13,7 +13,7 @@ FNAME_TEMPLATE = 'GTC{id:s}-{semester:s}_{obid:04d}.json'
 def download_json(proposal_id, semester, obid):
     # convert proposal ID to properly formatted string if its a number
     try:
-        int(proposal_id)
+        proposal_id = int(proposal_id)
     except:
         # force to be a string
         proposal_id = str(proposal_id)
