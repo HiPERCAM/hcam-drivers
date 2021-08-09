@@ -107,10 +107,12 @@ fi
 
 sleep 2
 
-# move server into offline state (starting NGC software in process)
-sleep 2
-do_wamp_call hipercam.ngc.rpc.ngc_server.offline
+# relaunch NGC server software
+do_wamp_call hipercam.ngc.rpc.stop_ngc_server
+do_wamp_call hipercam.ngc.rpc.start_ngc_server
+do_wamp_call hipercam.ngc.rpc.offline
 sleep 1
 
 # load default setup and switch to standby mode
+do_wamp_call hiperca.ngc.rpc.setup_ngc_server
 do_wamp_call hipercam.ngc.rpc.ngc_server.standby
