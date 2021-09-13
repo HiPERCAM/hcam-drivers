@@ -48,7 +48,7 @@ def kill_script(name):
 
 def shutdown_eso_software():
     try:
-        call('hipercam.ngc.rpc.ngc_server.exit')
+        call('hipercam.ngc.rpc.stop_ngc_server')
     except Exception as err:
         print('could not shut down eso software - ' + repr(err))
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         # default call, shutdown ESO s/w and everything EXCEPT hwserver
         for script in ['hserver', 'gtcserver', 'hdriver', 'fileserver']:
             kill_script(script)
-        
+
     else:
         for program in programs:
             if program not in KNOWN_SCRIPTS and program != 'eso':

@@ -290,7 +290,7 @@ class GUI(tk.Tk):
             if bring_offline:
                 # attempt to power off server
                 try:
-                    result = yield execCommand(self.globals, 'ngc_server.offline')
+                    result = yield execCommand(self.globals, 'offline')
                 except:
                     result = False
                 if result:
