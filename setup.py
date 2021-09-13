@@ -20,8 +20,8 @@ requirements = [
     'twisted',
     'configobj',
     'tqdm',
-    'hcam_widgets>=1.0.2',
-    'hcam_devices>=0.2.4'
+    'hcam_widgets>=1.0.3',
+    'hcam_devices>=0.3.0'
 ]
 if sys.version_info[0] == 2:
     requirements.append('pymodbus')
