@@ -6,7 +6,7 @@ from autobahn.twisted.component import Component, run
 from autobahn.twisted.wamp import ApplicationSession
 from hcam_drivers.config import load_config
 from hcam_widgets.globals import Container
-from hcam_widgets.hardware.slide import SlideFrame
+from hcam_widgets.compo.widgets import COMPOManualWidget
 from hcam_widgets.tkutils import addStyle
 from twisted.internet import reactor, tksupport
 from twisted.internet.defer import inlineCallbacks
@@ -38,13 +38,12 @@ class GUI(tk.Tk):
         # style
         addStyle(self)
         # configure
-        self.title('slide gui')
+        self.title('compo gui')
         self.protocol("WM_DELETE_WINDOW", self.ask_quit)
         self.createcommand("::tk::mac::Quit", self.ask_quit)
 
-        # add and pack slide frame
-        self.sf = SlideFrame(self)
-        self.sf.pack()
+        # add and pack compo frame
+        self.compo = COMPOManualWidget(self)
 
     @inlineCallbacks
     def ask_quit(self):
@@ -59,9 +58,9 @@ class GUI(tk.Tk):
         self.globals.clog.info('joined WAMP session')
         self.globals.session = session
 
-        # subscribe to slide telemetry
-        yield session.subscribe(self.sf.on_telemetry,
-                                "hipercam.slide.telemetry")
+        # subscribe to compo telemetry
+        yield session.subscribe(self.compo.on_telemetry,
+                                "hipercam.compo.telemetry")
 
 
 class WampComponent(ApplicationSession):
