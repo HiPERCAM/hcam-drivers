@@ -31,9 +31,9 @@ def process_input():
         call('hipercam.gtc.rpc.add_star', carry_on=False)
     else:
         try:
-            xpos, ypos = response.split(',')
+            xpos, ypos = (float(val) for val in response.split(','))
         except ValueError:
-            xpos, ypos = response.split()
+            xpos, ypos = (float(val) for val in response.split())
         xoff = xcen - xpos
         yoff = ycen - ypos
         
@@ -60,7 +60,7 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     # first get the rotator centre position
-    response = input('> Enter the rotator centre position in pixels (x, y)')
+    response = input('> Enter the rotator centre position in pixels (x, y): ')
     try:
         xcen, ycen = response.split(',')
     except ValueError:
