@@ -50,7 +50,8 @@ if __name__ == "__main__":
 
     import argparse
     parser = argparse.ArgumentParser(description='GTC pointing test')
-    parser.add_argument('nstars', help='number of stars to use', type=int, default=25)
+    parser.add_argument('-n', '--nstars', help='number of stars to use', 
+                        nargs='?', type=int, const=25, default=25)
     args = parser.parse_args()
 
     carry_on = True
