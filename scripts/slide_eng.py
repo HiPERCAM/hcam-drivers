@@ -5,7 +5,7 @@ import sys
 available_cmds = """
 Available commands:
     home
-    move <position>
+    move <microsteps>
     stop
     enable
     disable
