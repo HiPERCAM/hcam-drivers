@@ -313,7 +313,7 @@ class GUI(tk.Tk):
             print('\nThank you for using hdriver')
 
         # inline callbacks should return a generator
-        returnValue()
+        returnValue(None)
 
     @inlineCallbacks
     def on_wamp_session(self, session):
