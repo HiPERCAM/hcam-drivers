@@ -46,7 +46,6 @@ class GUI(tk.Tk):
         self.sf = SlideFrame(self)
         self.sf.pack()
 
-    @inlineCallbacks
     def ask_quit(self):
         reactor.stop()
         tksupport.uninstall()

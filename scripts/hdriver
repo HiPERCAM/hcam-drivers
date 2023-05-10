@@ -12,7 +12,7 @@ from autobahn.twisted.component import Component, run
 from autobahn.twisted.wamp import ApplicationSession
 
 from twisted.internet import reactor, tksupport
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 from hcam_widgets.globals import Container
 import hcam_widgets.widgets as w
@@ -311,6 +311,9 @@ class GUI(tk.Tk):
 
             # be nice on exit
             print('\nThank you for using hdriver')
+
+        # inline callbacks should return a generator
+        returnValue()
 
     @inlineCallbacks
     def on_wamp_session(self, session):
