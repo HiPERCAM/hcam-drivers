@@ -28,7 +28,8 @@ def process_input(nstars_remaining):
         call('hipercam.gtc.rpc.change_star', nearby=False)
         nstars_remaining -= 1
     elif response == 'a':
-        call('hipercam.gtc.rpc.add_star')
+        carry_on = nstars_remaining > 1
+        call('hipercam.gtc.rpc.add_star', carry_on=carry_on)
         nstars_remaining -= 1
     elif response == 'f':
         call('hipercam.gtc.rpc.add_star', carry_on=False)
