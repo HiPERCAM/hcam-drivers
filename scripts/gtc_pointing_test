@@ -11,8 +11,9 @@ from hcam_devices.gtc.headers import create_header_from_telpars
 from hcam_drivers.utils.gtc import calculate_sky_offset
 
 
-def process_input():
-    msg = """
+def process_input(nstars_remaining):
+    msg = f"""
+    Pointing Test (stars remaining: {nstars_remaining})
     Commands:
       'x, y' - enter current x and y position of star and send offset to GTC
       'c' - change to a nearby star, usually because there is a problem with this one.
@@ -25,10 +26,13 @@ def process_input():
         call('hipercam.gtc.rpc.change_star')
     elif response == 'p':
         call('hipercam.gtc.rpc.change_star', nearby=False)
+        nstars_remaining -= 1
     elif response == 'a':
         call('hipercam.gtc.rpc.add_star')
+        nstars_remaining -= 1
     elif response == 'f':
         call('hipercam.gtc.rpc.add_star', carry_on=False)
+        nstars_remaining = 0
     else:
         try:
             xpos, ypos = (float(val) for val in response.split(','))
@@ -44,6 +48,7 @@ def process_input():
         print(f'Pixel offset: {xoff:.2f}, {yoff:.2f}')
         print(f'Sky offset: {raoff:.2f}, {decoff:.2f}')
         call('hipercam.gtc.rpc.gtc.do_offset', raoff=raoff, decoff=decoff)
+    return nstars_remaining
 
 
 if __name__ == "__main__":
@@ -55,6 +60,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     carry_on = True
+    nstars_remaining = args.nstars
     try:
         pars = call('hipercam.gtc.rpc.get_telescope_pars')
         hdr = create_header_from_telpars(pars)
@@ -78,7 +84,7 @@ if __name__ == "__main__":
     print('Pointing model started')
     while carry_on:
         try:
-            process_input()
+            nstars_remaining = process_input(nstars_remaining)
         except KeyboardInterrupt:
             print('pointing model aborted by user')
             carry_on = False
