@@ -20,8 +20,8 @@ def calculate_sky_offset(xoff, yoff, sky_pa):
     """
     px_scale = 0.081  # arcseconds per pixel
     flipEW = True  # is E to the right in the image?
-    EofN = True  # does increasing rotator PA move us to E?
-    paOff = 29.8  # pa when rotator = 0
+    EofN = False  # does increasing rotator PA move us to E?
+    paOff = 209.8  # pa when rotator = 0
 
     if EofN:
         theta = sky_pa - paOff
