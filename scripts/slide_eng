@@ -32,7 +32,8 @@ if len(args.cmds) > 1 and args.cmds[0] != 'move':
 
 slide_function = getattr(sl, args.cmds[0])
 if len(args.cmds) > 1:
-    print(slide_function(*args.cmds[1:]))
+    position = int(args.cmds[1])
+    print(slide_function(position)
 else:
     if callable(slide_function):
         print(slide_function())
