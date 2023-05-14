@@ -85,6 +85,9 @@ if __name__ == "__main__":
     while carry_on:
         try:
             nstars_remaining = process_input(nstars_remaining)
+            if nstars_remaining == 0:
+                print('pointing test done')
+                carry_on = False
         except KeyboardInterrupt:
             print('pointing model aborted by user')
             carry_on = False
