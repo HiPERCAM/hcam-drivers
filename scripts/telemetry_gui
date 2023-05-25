@@ -1,0 +1,148 @@
+#!/usr/bin/env python
+from __future__ import division, print_function, unicode_literals
+
+import pickle
+import pprint as pp
+from functools import partial
+
+import six
+from autobahn.twisted.component import Component, run
+from autobahn.twisted.wamp import ApplicationSession
+from hcam_widgets import widgets as w
+from hcam_widgets.globals import Container
+from hcam_widgets.hardware.slide import SlideFrame
+from hcam_widgets.tkutils import addStyle
+from twisted.internet import reactor, tksupport
+from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.logger import Logger
+
+from hcam_drivers.config import load_config
+
+if not six.PY3:
+    import Tkinter as tk
+else:
+    import tkinter as tk
+
+
+class TelemetryGUI(tk.Tk):
+    """
+    Simple GUI to display telemtry from any topic
+    """
+
+    def __init__(self):
+        tk.Tk.__init__(self)
+
+        # empty subscription
+        self.sub = None
+
+        # add a container object
+        self.globals = Container(telescope_names=["GTC", "WHT"])
+        # load config
+        self.globals.cpars = dict()
+        load_config(self.globals)
+
+        # initialise WAMP session
+        self.globals.session = None
+        self.globals.clog = Logger()
+        g = self.globals
+
+        # style
+        addStyle(self)
+
+        # configure
+        self.title("telemetry gui")
+        self.protocol("WM_DELETE_WINDOW", self.ask_quit)
+        self.createcommand("::tk::mac::Quit", self.ask_quit)
+
+        # things to put stuff in
+        top = tk.Frame(self)
+
+        # drop-down menu to select topic
+        tk.Label(top, text="Topic:").grid(row=0, column=0, sticky=tk.W)
+        self.topic = w.Select(top, 0, ["wait for topics"], None)
+        self.topic.grid(row=0, column=1, sticky=tk.W)
+
+        # widget for displaying telemetry - big text box
+        self.label = tk.Text(self, bg=g.COL["log"])
+        self.label.configure(state=tk.NORMAL, font=g.ENTRY_FONT)
+        self.label.pack(expand=True, side=tk.BOTTOM, fill=tk.BOTH)
+
+        top.pack(expand=False, side=tk.TOP, fill=tk.BOTH)
+        # bottom.pack(expand=True, side=tk.BOTTOM)
+
+    def ask_quit(self):
+        reactor.stop()
+        tksupport.uninstall()
+
+    @inlineCallbacks
+    def change_topic(self, topic):
+        if self.sub is not None:
+            yield self.sub.unsubscribe()
+        self.topic.set(topic)
+        self.sub = yield self.globals.session.subscribe(self.on_telemetry, self.topic())
+
+    def on_telemetry(self, data):
+        """
+        called when a telemetry message arrives
+        """
+        tel = pickle.loads(data)
+        ts = tel.pop("timestamp")
+        ts.precision = 2
+        tel_data = pp.pformat(tel)
+        self.label.delete(1.0, tk.END)
+        self.label.insert(tk.END, f"{ts.isot}\n{tel_data}")
+
+    @inlineCallbacks
+    def on_wamp_session(self, session):
+        """
+        called when joining a WAMP session
+        """
+        self.globals.clog.info("joined WAMP session")
+        self.globals.session = session
+
+        # get list of topics
+        subscriptions = yield session.call("wamp.subscription.list")
+
+        topics = []
+        for sub in subscriptions["exact"]:
+            info = yield session.call("wamp.subscription.get", sub)
+            topics.append(info["uri"])
+        topics = sorted(list(set(topics)))
+
+        # # set dropdown box options
+        self.topic.val.set("")
+        self.topic["menu"].delete(0, "end")
+        for topic in topics:
+            if "telemetry" not in topic:
+                continue
+            self.topic["menu"].add_command(
+                label=topic, command=partial(self.change_topic, topic)
+            )
+        self.topic.options = topics
+
+        self.globals.clog.info("filled topics")
+
+
+# standard component to hold GUI instance so we can respawn
+# without making new GUI
+class WampComponent(ApplicationSession):
+    def onJoin(self, details):
+        gui = self.config.extra["gui"]
+        gui.on_wamp_session(self)
+
+
+if __name__ == "__main__":
+    import os
+
+    server = os.environ.get("WAMP_SERVER", "192.168.1.2")
+    # The main window.
+    gui = TelemetryGUI()
+
+    tksupport.install(gui)
+    component = Component(
+        transports=f"ws://{server}:8080/ws",
+        realm="realm1",
+        session_factory=WampComponent,
+        extra={"gui": gui},
+    )
+    run([component], log_level="info")
