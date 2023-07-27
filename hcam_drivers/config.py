@@ -1,13 +1,18 @@
 # read in config
 from __future__ import absolute_import, print_function, division
 import configobj
-import importlib
 import os
 import validate
 
 from twisted.internet.defer import inlineCallbacks
 
 from hcam_widgets.misc import createJSON, saveJSON
+
+try:
+    from importlib import resources as importlib_resources
+except Exception:
+    # backport for python 3.6
+    import importlib_resources
 
 
 def check_user_dir(g):
@@ -32,7 +37,7 @@ def load_config(g):
     Populate application level globals from config file
     """
     configspec_file = str(
-        importlib.resources.files("hcam_drivers") / "data" / "configspec.ini"
+        importlib_resources.files("hcam_drivers") / "data" / "configspec.ini"
     )
     # try and load config file.
     # look in the following locations in order
@@ -40,7 +45,7 @@ def load_config(g):
     # - package resources
     paths = []
     paths.append(os.path.expanduser("~/.hdriver/"))
-    resource_dir = str(importlib.resources.files("hcam_drivers") / "data")
+    resource_dir = str(importlib_resources.files("hcam_drivers") / "data")
     paths.append(resource_dir)
 
     # now load config file
@@ -68,7 +73,7 @@ def write_config(g):
     Dump application level globals to config file
     """
     configspec_file = str(
-        importlib.resources.files("hcam_drivers") / "data" / "configspec.ini"
+        importlib_resources.files("hcam_drivers") / "data" / "configspec.ini"
     )
     config = configobj.ConfigObj({}, configspec=configspec_file)
     config.update(g.cpars)
