@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+from hcam_devices.devices.zaber import ZaberLS, ZaberLSEmulator
+import argparse
+import sys
+
+available_cmds = """
+Available commands:
+    home
+    move <microsteps>
+    stop
+    enable
+    disable
+    position
+"""
+
+parser = argparse.ArgumentParser(description="CMD line slide script",
+                                 epilog=available_cmds,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument("-e", "--emulate", action="store_true", help="emulation mode")
+parser.add_argument("cmds", nargs="+", help="commands to send to slide")
+args = parser.parse_args()
+
+if args.emulate:
+    sl = ZaberLSEmulator()
+else:
+    sl = ZaberLS()
+
+sl.connect()
+if len(args.cmds) > 1 and args.cmds[0] != 'move':
+    print("Must specify position with move command")
+    sys.exit(-1)
+
+slide_function = getattr(sl, args.cmds[0])
+if len(args.cmds) > 1:
+    position = int(args.cmds[1])
+    print(slide_function(position))
+else:
+    if callable(slide_function):
+        print(slide_function())
+    else:
+        print(slide_function)
+sl.close()

@@ -1,7 +1,6 @@
 # read in config
 from __future__ import absolute_import, print_function, division
 import configobj
-import pkg_resources
 import os
 import validate
 
@@ -9,37 +8,44 @@ from twisted.internet.defer import inlineCallbacks
 
 from hcam_widgets.misc import createJSON, saveJSON
 
+try:
+    from importlib import resources as importlib_resources
+except Exception:
+    # backport for python 3.6
+    import importlib_resources
+
 
 def check_user_dir(g):
     """
     Check directories exist for saving apps/configs etc. Create if not.
     """
-    dirs = [os.path.expanduser('~/.hdriver')]
-    if 'app_directory' in g.cpars:
-        dirs.append(os.path.expanduser(g.cpars['app_directory']))
-    if 'log_file_directory' in g.cpars:
-        dirs.append(os.path.expanduser(g.cpars['log_file_directory']))
+    dirs = [os.path.expanduser("~/.hdriver")]
+    if "app_directory" in g.cpars:
+        dirs.append(os.path.expanduser(g.cpars["app_directory"]))
+    if "log_file_directory" in g.cpars:
+        dirs.append(os.path.expanduser(g.cpars["log_file_directory"]))
     for direc in dirs:
         if not os.path.exists(direc):
             try:
                 os.mkdir(direc)
             except Exception as err:
-                g.clog.warn('Failed to make directory ' + str(err))
+                g.clog.warn("Failed to make directory " + str(err))
 
 
 def load_config(g):
     """
     Populate application level globals from config file
     """
-    configspec_file = pkg_resources.resource_filename('hcam_drivers',
-                                                      'data/configspec.ini')
+    configspec_file = str(
+        importlib_resources.files("hcam_drivers") / "data" / "configspec.ini"
+    )
     # try and load config file.
     # look in the following locations in order
     # - ~/.hdriver directory
     # - package resources
     paths = []
-    paths.append(os.path.expanduser('~/.hdriver/'))
-    resource_dir = pkg_resources.resource_filename('hcam_drivers', 'data')
+    paths.append(os.path.expanduser("~/.hdriver/"))
+    resource_dir = str(importlib_resources.files("hcam_drivers") / "data")
     paths.append(resource_dir)
 
     # now load config file
@@ -56,7 +62,7 @@ def load_config(g):
     validator = validate.Validator()
     result = config.validate(validator)
     if result is not True:
-        g.clog.warn('Config file validation failed')
+        g.clog.warn("Config file validation failed")
 
     # now update globals with config
     g.cpars.update(config)
@@ -66,11 +72,12 @@ def write_config(g):
     """
     Dump application level globals to config file
     """
-    configspec_file = pkg_resources.resource_filename('hcam_drivers',
-                                                      'data/configspec.ini')
+    configspec_file = str(
+        importlib_resources.files("hcam_drivers") / "data" / "configspec.ini"
+    )
     config = configobj.ConfigObj({}, configspec=configspec_file)
     config.update(g.cpars)
-    config.filename = os.path.expanduser('~/.hdriver/config')
+    config.filename = os.path.expanduser("~/.hdriver/config")
     try:
         config.write()
     except Exception as err:

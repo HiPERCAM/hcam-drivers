@@ -45,7 +45,6 @@ class GUI(tk.Tk):
         # add and pack compo frame
         self.compo = COMPOManualWidget(self)
 
-    @inlineCallbacks
     def ask_quit(self):
         reactor.stop()
         tksupport.uninstall()

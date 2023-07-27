@@ -6,48 +6,58 @@ import os
 from six.moves.urllib.request import urlretrieve
 import json
 
-URL_TEMPLATE = 'http://gtc-phase2.gtc.iac.es/science/Parser/sequences/GTC{id:s}-{semester:s}_{obid:04d}.json'
-FNAME_TEMPLATE = 'GTC{id:s}-{semester:s}_{obid:04d}.json'
+URL_TEMPLATE = "http://gtc-phase2.gtc.iac.es/science/Parser/sequences/GTC{id:s}-{semester:s}_{obid:04d}.json"
+FNAME_TEMPLATE = "GTC{id:s}-{semester:s}_{obid:04d}.json"
 
 
-def download_json(proposal_id, semester, obid):
-    # convert proposal ID to properly formatted string if its a number
+def _format_proposal_id(proposal_id):
+    """
+    Force proposal ID to be a two digit string
+    """
     try:
         proposal_id = int(proposal_id)
     except:
         # force to be a string
         proposal_id = str(proposal_id)
     else:
-        proposal_id = '{:02d}'.format(proposal_id)
+        proposal_id = "{:02d}".format(proposal_id)
+    return proposal_id
+
+
+def download_json(proposal_id, semester, obid):
+    # convert proposal ID to properly formatted string if its a number
+    proposal_id = _format_proposal_id(proposal_id)
 
     pars = dict(id=proposal_id, semester=semester, obid=obid)
-    dirname = os.path.join(os.path.expanduser('~/.hdriver'), 'apps')
+    dirname = os.path.join(os.path.expanduser("~/.hdriver"), "apps")
     fname = os.path.join(dirname, FNAME_TEMPLATE.format(**pars))
     url = URL_TEMPLATE.format(**pars)
-    print('downloading json from {} to {}'.format(url, fname))
+    print("downloading json from {} to {}".format(url, fname))
     urlretrieve(url, fname)
 
 
 def check_download(proposal_id, semester, obid):
+    proposal_id = _format_proposal_id(proposal_id)
     pars = dict(id=proposal_id, semester=semester, obid=obid)
-    dirname = os.path.join(os.path.expanduser('~/.hdriver'), 'apps')
+    dirname = os.path.join(os.path.expanduser("~/.hdriver"), "apps")
     fname = os.path.join(dirname, FNAME_TEMPLATE.format(**pars))
     try:
         json.load(open(fname))
-        print('Download complete - load JSON file from hdriver')
+        print("Download complete - load JSON file from hdriver")
     except Exception as err:
         os.unlink(fname)
-        print('No such JSON file, or download failed')
+        print("No such JSON file, or download failed")
         print(str(err))
 
 
 if __name__ == "__main__":
-
     # command-line parameters
-    parser = argparse.ArgumentParser(description='Download GTC JSON files for instrument setup')
-    parser.add_argument('proposal_id', type=str, help='Proposal ID number (e.g 100)')
-    parser.add_argument('semester', type=str, help='Semester (e.g 17B)')
-    parser.add_argument('obid', type=int, help='Observing block id number (e.g 2)')
+    parser = argparse.ArgumentParser(
+        description="Download GTC JSON files for instrument setup"
+    )
+    parser.add_argument("proposal_id", type=str, help="Proposal ID number (e.g 100)")
+    parser.add_argument("semester", type=str, help="Semester (e.g 17B)")
+    parser.add_argument("obid", type=int, help="Observing block id number (e.g 2)")
     args = parser.parse_args()
 
     download_json(args.proposal_id, args.semester, args.obid)

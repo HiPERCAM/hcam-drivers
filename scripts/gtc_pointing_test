@@ -1,0 +1,94 @@
+#! /usr/bin/env python
+#
+# This is open-source software licensed under a BSD license.
+# Please see the file LICENSE.txt for details.
+#
+from __future__ import print_function, absolute_import, unicode_literals, division
+import sys
+
+from hcam_devices.wamp.utils import call
+from hcam_devices.gtc.headers import create_header_from_telpars
+from hcam_drivers.utils.gtc import calculate_sky_offset
+
+
+def process_input(nstars_remaining):
+    msg = f"""
+    Pointing Test (stars remaining: {nstars_remaining})
+    Commands:
+      'x, y' - enter current x and y position of star and send offset to GTC
+      'c' - change to a nearby star, usually because there is a problem with this one.
+      'p' - skip this position in the pointing model entirely.
+      'a' - accept this star into the pointing model and move the next one.
+      'f' - accept this star into the pointing model and finish.
+    > """
+    response = input(msg)
+    if response == 'c':
+        call('hipercam.gtc.rpc.change_star')
+    elif response == 'p':
+        call('hipercam.gtc.rpc.change_star', nearby=False)
+        nstars_remaining -= 1
+    elif response == 'a':
+        carry_on = nstars_remaining > 1
+        call('hipercam.gtc.rpc.add_star', carry_on=carry_on)
+        nstars_remaining -= 1
+    elif response == 'f':
+        call('hipercam.gtc.rpc.add_star', carry_on=False)
+        nstars_remaining = 0
+    else:
+        try:
+            xpos, ypos = (float(val) for val in response.split(','))
+        except ValueError:
+            xpos, ypos = (float(val) for val in response.split())
+        xoff = xcen - xpos
+        yoff = ycen - ypos
+        
+        pars = call('hipercam.gtc.rpc.get_telescope_pars')
+        hdr = create_header_from_telpars(pars)            
+        sky_pa = float(hdr['INSTRPA'])
+        raoff, decoff = calculate_sky_offset(xoff, yoff, sky_pa)
+        print(f'Pixel offset: {xoff:.2f}, {yoff:.2f}')
+        print(f'Sky offset: {raoff:.2f}, {decoff:.2f}')
+        call('hipercam.gtc.rpc.gtc.do_offset', raoff=raoff, decoff=decoff)
+    return nstars_remaining
+
+
+if __name__ == "__main__":
+
+    import argparse
+    parser = argparse.ArgumentParser(description='GTC pointing test')
+    parser.add_argument('-n', '--nstars', help='number of stars to use', 
+                        nargs='?', type=int, const=25, default=25)
+    args = parser.parse_args()
+
+    carry_on = True
+    nstars_remaining = args.nstars
+    try:
+        pars = call('hipercam.gtc.rpc.get_telescope_pars')
+        hdr = create_header_from_telpars(pars)
+    except Exception as err:
+        print('cannot work without communication to GTC server')
+        print('this needs to be running at their end,')
+        print('and the "gtcserver" script needs to be running on the rack')
+        print('failed to get telescope params from GTC server: ' + str(err))
+        sys.exit(-1)
+
+    # first get the rotator centre position
+    response = input('> Enter the rotator centre position in pixels (x, y): ')
+    try:
+        xcen, ycen = response.split(',')
+    except ValueError:
+        xcen, ycen = response.split()
+    xcen, ycen = float(xcen), float(ycen)
+
+    print('Starting GTC pointing test')
+    call('hipercam.gtc.rpc.start_pointing_model', args.nstars)
+    print('Pointing model started')
+    while carry_on:
+        try:
+            nstars_remaining = process_input(nstars_remaining)
+            if nstars_remaining == 0:
+                print('pointing test done')
+                carry_on = False
+        except KeyboardInterrupt:
+            print('pointing model aborted by user')
+            carry_on = False
