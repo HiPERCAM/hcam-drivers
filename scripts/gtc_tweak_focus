@@ -1,0 +1,54 @@
+#! /usr/bin/env python
+#
+# This is open-source software licensed under a BSD license.
+# Please see the file LICENSE.txt for details.
+#
+from __future__ import print_function, absolute_import, unicode_literals, division
+import sys
+import time
+
+from hcam_devices.wamp.utils import call
+
+
+def get_input():
+    response = input("> Enter desired focus offset (typically +/- 0.05): ")
+    try:
+        offset = float(response)
+    except ValueError:
+        print(" !! failed to parse input !! ")
+        return get_input()
+    return offset
+
+
+def change_focus(offset):
+    # find current and target focus value
+    foc_now = call("hipercam.gtc.rpc.get_focus")
+    target = foc_now + offset
+
+    # request the change
+    call("hipercam.gtc.rpc.change_focus", offset)
+
+    # monitor the change
+    while abs(target - foc_now) > 0.005:
+        foc_now = call("hipercam.gtc.rpc.get_focus")
+        print(f"...{foc_now:.2f}", end=",")
+        time.sleep(0.1)
+
+    print(" done.")
+
+
+if __name__ == "__main__":
+    carry_on = True
+    try:
+        foc_now = call("hipercam.gtc.rpc.get_focus")
+    except Exception as err:
+        print("failed to communicate with GTC server: " + str(err))
+        sys.exit(-1)
+
+    print("Current telescope focus in mm = {:.2f}".format(foc_now))
+    while carry_on:
+        try:
+            focus_offset = get_input()
+            change_focus(focus_offset)
+        except KeyboardInterrupt:
+            carry_on = False
