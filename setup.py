@@ -21,7 +21,7 @@ requirements = [
     "configobj",
     "tqdm",
     "hcam_widgets>=1.1.2",
-    "hcam_devices>=1.1.0",
+    "hcam_devices>=1.1.1",
 ]
 if sys.version_info[0] == 2:
     requirements.append("pymodbus")
