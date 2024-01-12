@@ -29,12 +29,17 @@ def change_focus(offset):
     call("hipercam.gtc.rpc.change_focus", offset)
 
     # monitor the change
-    while abs(target - foc_now) > 0.005:
+    start_focus_time = time.time()
+    while (abs(target - foc_now) > 0.005) and (time.time() - start_focus_time < 7.0):
         foc_now = call("hipercam.gtc.rpc.get_focus")
         print(f"...{foc_now:.2f}", end=",")
-        time.sleep(0.1)
+        sys.stdout.flush()
+        time.sleep(1)
 
-    print(" done.")
+    if abs(target - foc_now) > 0.005:
+        print(" timed out after 7 s.")
+    else:
+        print(" done.")
 
 
 if __name__ == "__main__":
